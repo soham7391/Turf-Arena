@@ -1,0 +1,98 @@
+:root {
+  --primary-navy: #1a2b4c;
+  --primary-green: #16a34a;
+  --bg-light: #f8fafc;
+  --text-dark: #0f172a;
+  --text-muted: #64748b;
+}
+
+/* 1. THE FIX FOR FULL SCREEN */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; width: 100%; min-height: 100vh; font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg-light); color: var(--text-dark); }
+
+/* Navbar */
+.navbar { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+.nav-brand { display: flex; align-items: center; cursor: pointer; }
+.nav-title h1 { margin: 0; font-size: 1.5rem; color: var(--primary-navy); letter-spacing: -0.5px;}
+.nav-title p { margin: 0; font-size: 0.75rem; color: var(--text-muted); font-weight: 500;}
+
+.nav-links { display: flex; gap: 1.5rem; align-items: center; }
+.nav-btn { background: none; border: none; font-size: 1rem; color: var(--text-muted); cursor: pointer; font-weight: 500; transition: color 0.2s;}
+.nav-btn:hover { color: var(--primary-navy); }
+
+.btn-outline { border: 2px solid var(--primary-navy); padding: 0.5rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; background: transparent; color: var(--primary-navy); transition: all 0.2s;}
+.btn-outline:hover { background: var(--primary-navy); color: white; }
+.btn-solid { display: flex; align-items: center; justify-content: center; background: var(--primary-green); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s;}
+.btn-solid:hover { background: #15803d; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);}
+.btn-disabled { background: #cbd5e1; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: not-allowed; }
+.btn-danger { background: #ef4444; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 0.85rem;}
+.btn-danger:hover { background: #dc2626; }
+
+/* Hero Section */
+.hero { display: flex; align-items: center; justify-content: space-between; padding: 5rem 4rem; max-width: 1200px; margin: 0 auto; gap: 4rem;}
+.hero-text h2 { font-size: 3.5rem; color: var(--primary-navy); line-height: 1.1; margin-bottom: 1.5rem;}
+.hero-text .highlight { color: var(--primary-green); }
+.hero-text p { font-size: 1.2rem; color: var(--text-muted); max-width: 500px; margin-bottom: 2rem;}
+
+/* Auth & Forms */
+.auth-container { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
+.auth-card { background: white; padding: 3rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 400px; text-align: center;}
+.auth-card h2 { color: var(--primary-navy); margin-bottom: 1.5rem; }
+.auth-card input, .auth-card select { width: 100%; padding: 0.8rem; margin-bottom: 1rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; box-sizing: border-box; transition: border-color 0.2s;}
+.auth-card input:focus { outline: none; border-color: var(--primary-green); }
+.auth-card button { width: 100%; padding: 0.8rem; margin-top: 1rem; }
+
+/* Dashboard & Cards */
+.dashboard { padding: 3rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+/* 2. THE FIX FOR COLLIDING HEADERS */
+.dashboard-header { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem; width: 100%;}
+.dashboard-header h2 { margin: 0 0 0.5rem 0; font-size: 2rem; }
+.dashboard-header span { display: block; font-size: 1.1rem; }
+
+/* 3. THE FIX FOR TURF CARDS */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; width: 100%;}
+.card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02); cursor: pointer; border: 1px solid #e2e8f0; transition: all 0.3s ease;}
+.card:hover { transform: translateY(-5px); box-shadow: 0 12px 25px rgba(0,0,0,0.08); border-color: var(--primary-green);}
+.badge { display: inline-block; background: #dcfce7; color: #166534; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem;}
+
+/* Info Sections */
+.info-section { padding: 4rem; max-width: 800px; margin: 0 auto; text-align: center; background: white; border-radius: 12px; margin-top: 3rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05);}
+
+/* Modals & Premium Invoice */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000;}
+.modal-content { background: white; padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);}
+
+.invoice-box { 
+  background: #ffffff; 
+  border: 1px solid #e2e8f0; 
+  border-top: 5px solid var(--primary-green);
+  padding: 2rem; 
+  margin: 1.5rem 0 2rem 0; 
+  text-align: left; 
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.invoice-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-size: 4.5rem;
+  font-weight: 900;
+  color: rgba(22, 163, 74, 0.04);
+  pointer-events: none;
+  letter-spacing: 0.5rem;
+  user-select: none;
+}
+
+.invoice-header { display: flex; justify-content: space-between; margin-bottom: 1.5rem; align-items: center;}
+.invoice-header h4 { margin: 0; color: var(--primary-navy); font-size: 1.2rem;}
+.invoice-header span { font-size: 0.85rem; color: var(--text-muted); background: #f1f5f9; padding: 0.2rem 0.6rem; border-radius: 4px;}
+
+.invoice-row { display: flex; justify-content: space-between; margin-bottom: 0.8rem; font-size: 0.95rem;}
+.invoice-row span { color: var(--text-muted); }
+.invoice-row strong { color: var(--text-dark); }
