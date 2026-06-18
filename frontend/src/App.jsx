@@ -3,7 +3,13 @@ import LightPillar from './LightPillar';
 import './App.css';
 
 function App() {
-  const [view, setView] = useState('landing');
+  const [view, setView] = useState('landing'); 
+  const [newTurf, setNewTurf] = useState({
+    turfname: '',
+    type: 'Football',
+    location: '',
+    priceperhour: ''
+  });
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('turf_user');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -32,6 +38,48 @@ function App() {
   const [password, setPassword] = useState('');
   const [number, setNumber] = useState('');
   const [role, setRole] = useState('user');
+
+const handleAddTurf = (e) => {
+    e.preventDefault();
+    
+    fetch('http://127.0.0.1:5000/api/turfs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        turfname: newTurf.turfname, 
+        type: newTurf.type, 
+        location: newTurf.location, 
+        priceperhour: Number(newTurf.priceperhour),
+        adminid: user.id 
+      })
+    })
+    .then(async res => {
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to add turf');
+      }
+      return res.json();
+    })
+    .then(data => {
+      alert('Turf successfully added to your dashboard!');
+
+      setAdminData(prev => ({
+        ...prev,
+        turfs: [...prev.turfs, {
+          turfid: data.turfid,
+          turfname: newTurf.turfname,
+          type: newTurf.type,
+          location: newTurf.location,
+          priceperhour: Number(newTurf.priceperhour)
+        }]
+      }));
+
+      setNewTurf({ turfname: '', type: 'Football', location: '', priceperhour: '' });
+    })
+    .catch(err => {
+      alert(`Error: ${err.message}`);
+    });
+  };
 
   useEffect(() => {
     if (view === 'dashboard' && user) {
@@ -326,7 +374,53 @@ const handleLogin = (e) => {
             <h2>Admin Control Panel</h2>
             <span style={{color: '#64748b'}}>Manage your venues and bookings</span>
           </div>
-          
+          <div className="card" style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8fafc', border: '2px dashed #cbd5e1' }}>
+            <h3 style={{ color: '#1a2b4c', marginTop: 0, marginBottom: '1rem' }}>+ Add a New Venue</h3>
+            <form onSubmit={handleAddTurf} style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+              
+              <input 
+                type="text" 
+                placeholder="Turf Name (e.g. Velocity Sports)" 
+                value={newTurf.turfname}
+                onChange={(e) => setNewTurf({...newTurf, turfname: e.target.value})}
+                required 
+                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+              />
+
+              <select 
+                value={newTurf.type} 
+                onChange={(e) => setNewTurf({...newTurf, type: e.target.value})}
+                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+              >
+                <option value="Football">Football</option>
+                <option value="Cricket">Cricket</option>
+                <option value="Tennis">Tennis</option>
+                <option value="Multisport">Multisport</option>
+              </select>
+
+              <input 
+                type="text" 
+                placeholder="Location (e.g. Andheri West)" 
+                value={newTurf.location}
+                onChange={(e) => setNewTurf({...newTurf, location: e.target.value})}
+                required 
+                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+              />
+
+              <input 
+                type="number" 
+                placeholder="Price per Hour (₹)" 
+                value={newTurf.priceperhour}
+                onChange={(e) => setNewTurf({...newTurf, priceperhour: e.target.value})}
+                required 
+                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+              />
+
+              <button type="submit" className="btn-solid" style={{ gridColumn: 'span 2', padding: '0.8rem' }}>
+                Create Turf
+              </button>
+            </form>
+          </div>
           <h3 style={{color: '#1a2b4c', marginBottom: '1rem'}}>My Venues</h3>
           <div className="grid" style={{marginBottom: '3rem'}}>
             {adminData.turfs.map(t => (
