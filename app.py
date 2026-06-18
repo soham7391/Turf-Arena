@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS 
-from werkzeug.security import generate_password_hash, check_password_hash
+import os
+from werkzeug.security import generate_password_hash, check_password_hash 
+from werkzeug.utils import secure_filename
 import psycopg2
 import psycopg2.extras
 
@@ -11,7 +13,8 @@ DB_HOST = "localhost"
 DB_NAME = "turf_management"
 DB_USER = "postgres"
 DB_PASS = "SODU1602"
-
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def get_db_connection():
     return psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
 
@@ -59,16 +62,53 @@ def login():
         return jsonify({"error": "Invalid credentials"}), 401
     finally:
         cur.close()
-        conn.close()
+        conn.close() 
 @app.route('/api/turfs', methods=['GET'])
-def get_turfs():
+def get_all_turfs():
     conn = get_db_connection()
+    # RealDictCursor ensures the data is returned as JSON objects with column names
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT * FROM Turf")
-    turfs = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify(turfs), 200
+    try:
+        # Fetch all turfs, ordering them so the newest ones appear at the top!
+        cur.execute("SELECT * FROM Turf ORDER BY turfid DESC")
+        turfs = cur.fetchall()
+        return jsonify(turfs), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+@app.route('/api/turfs', methods=['POST'])
+def add_turf():
+    data = request.form # Changed to form data for file uploads
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        image_url = ""
+        if 'image' in request.files:
+            file = request.files['image']
+            if file.filename != '':
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                image_url = f"http://127.0.0.1:5000/static/uploads/{filename}"
+
+        google_maps_link = data.get('google_maps_link', '')
+        contact_email = data.get('contact_email', '') 
+
+        cur.execute(
+            "INSERT INTO Turf (turfname, type, priceperhour, location, adminid, image_url, google_maps_link, contact_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING turfid",
+            (data['turfname'], data['type'], data['priceperhour'], data['location'], data['adminid'], image_url, google_maps_link, contact_email)
+        )
+        new_turfid = cur.fetchone()[0]
+        conn.commit()
+        return jsonify({"status": "success", "turfid": new_turfid}), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 400
+    finally:
+        cur.close()
+        conn.close()
 
 @app.route('/api/admin/dashboard/<int:admin_id>', methods=['GET'])
 def admin_dashboard(admin_id):

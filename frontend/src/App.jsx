@@ -8,21 +8,23 @@ function App() {
     turfname: '',
     type: 'Football',
     location: '',
-    priceperhour: ''
+    priceperhour: '',
+    imageFile: null,
+    google_maps_link: '',
+    contact_email: ''
   });
+  
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('turf_user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  
   const [turfs, setTurfs] = useState([]);
   const [adminData, setAdminData] = useState({ turfs: [], bookings: [] });
   
   const fallbackTurfs = [
     { turfid: 1, turfname: 'Green Arena', type: 'Football', priceperhour: 1200, location: 'Downtown Sector 5', adminid: 1 },
-    { turfid: 2, turfname: 'Blue Sky Box', type: 'Cricket', priceperhour: 1500, location: 'Uptown Heights', adminid: 2 },
-    { turfid: 3, turfname: 'The Goal Post', type: 'Football', priceperhour: 1000, location: 'Sector 12 East', adminid: 2 },
-    { turfid: 4, turfname: 'Smash It Court', type: 'Badminton', priceperhour: 500, location: 'Mall Road', adminid: 3 },
-    { turfid: 5, turfname: 'Velocity Sports', type: 'Multi-sport', priceperhour: 1800, location: 'New Town Park', adminid: 4 }
+    { turfid: 2, turfname: 'Blue Sky Box', type: 'Cricket', priceperhour: 1500, location: 'Uptown Heights', adminid: 2 }
   ];
 
   const [selectedTurf, setSelectedTurf] = useState(null);
@@ -39,19 +41,24 @@ function App() {
   const [number, setNumber] = useState('');
   const [role, setRole] = useState('user');
 
-const handleAddTurf = (e) => {
+  const handleAddTurf = (e) => {
     e.preventDefault();
     
+    const formData = new FormData();
+    formData.append('turfname', newTurf.turfname);
+    formData.append('type', newTurf.type);
+    formData.append('location', newTurf.location);
+    formData.append('priceperhour', newTurf.priceperhour);
+    formData.append('adminid', user.id);
+    formData.append('google_maps_link', newTurf.google_maps_link);
+    formData.append('contact_email', newTurf.contact_email);
+    if (newTurf.imageFile) {
+      formData.append('image', newTurf.imageFile);
+    }
+
     fetch('http://127.0.0.1:5000/api/turfs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        turfname: newTurf.turfname, 
-        type: newTurf.type, 
-        location: newTurf.location, 
-        priceperhour: Number(newTurf.priceperhour),
-        adminid: user.id 
-      })
+      body: formData 
     })
     .then(async res => {
       if (!res.ok) {
@@ -62,7 +69,6 @@ const handleAddTurf = (e) => {
     })
     .then(data => {
       alert('Turf successfully added to your dashboard!');
-
       setAdminData(prev => ({
         ...prev,
         turfs: [...prev.turfs, {
@@ -70,11 +76,11 @@ const handleAddTurf = (e) => {
           turfname: newTurf.turfname,
           type: newTurf.type,
           location: newTurf.location,
-          priceperhour: Number(newTurf.priceperhour)
+          priceperhour: Number(newTurf.priceperhour),
+          image_url: newTurf.imageFile ? URL.createObjectURL(newTurf.imageFile) : ''
         }]
       }));
-
-      setNewTurf({ turfname: '', type: 'Football', location: '', priceperhour: '' });
+      setNewTurf({ turfname: '', type: 'Football', location: '', priceperhour: '', imageFile: null, google_maps_link: '', contact_email: '' });
     })
     .catch(err => {
       alert(`Error: ${err.message}`);
@@ -100,17 +106,13 @@ const handleAddTurf = (e) => {
           .then(data => setAdminData(data))
           .catch(() => {
             const ownedTurfs = fallbackTurfs.filter(t => t.adminid === user.id);
-            setAdminData({
-              turfs: ownedTurfs,
-              bookings: [
-                { bookingid: 101, username: 'Amit Kumar', turfname: ownedTurfs[0]?.turfname || 'N/A', bookingdate: '2026-04-10', duration: 2, totalamount: ownedTurfs[0]?.priceperhour * 2 || 0, status: 'Confirmed' }
-              ]
-            });
+            setAdminData({ turfs: ownedTurfs, bookings: [] });
           });
       }
     }
   }, [view, user]);
-const handleLogin = (e) => {
+
+  const handleLogin = (e) => {
     e.preventDefault();
     fetch('http://127.0.0.1:5000/api/login', {
       method: 'POST',
@@ -127,7 +129,7 @@ const handleLogin = (e) => {
     .then(data => {
       const userData = { id: data.id, name: data.name, email: data.email, role: data.role };
       setUser(userData);
-      localStorage.setItem('turf_user', JSON.stringify(userData)); // Save session
+      localStorage.setItem('turf_user', JSON.stringify(userData)); 
       setView('dashboard');
     })
     .catch(err => {
@@ -144,9 +146,9 @@ const handleLogin = (e) => {
     })
     .then(async res => {
       if (!res.ok) {
-  const err = await res.json();
-  throw new Error(`Backend Error: ${err.error}`);
-}
+        const err = await res.json();
+        throw new Error(`Backend Error: ${err.error}`);
+      }
       alert(`Registration successful! Please sign in.`);
       setView('login');
       setPassword(''); 
@@ -287,51 +289,11 @@ const handleLogin = (e) => {
                 <img src="/hero.jpg" alt="Turf Arena" style={{ width: '100%', maxWidth: '500px', height: 'auto', objectFit: 'cover', borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', border: '4px solid #1e293b', backgroundColor: 'white' }} />
               </div>
             </div>
-            
-            <div style={{ width: '100%', marginTop: '4rem', padding: '1rem 0', backgroundColor: 'rgba(22, 163, 74, 0.2)', borderTop: '1px solid rgba(74, 222, 128, 0.3)', borderBottom: '1px solid rgba(74, 222, 128, 0.3)' }}>
-              <marquee scrollamount="10" style={{ color: '#4ade80', fontSize: '1.2rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                ⚽ SEAMLESS BOOKINGS FOR EVERY SPORT &nbsp; | &nbsp; 🏏 EXPERIENCE PREMIUM PLAYING SURFACES &nbsp; | &nbsp; 🎾 NO MORE DOUBLE BOOKINGS, JUST PURE PLAY &nbsp; | &nbsp; ⚡ SMART VENUE MANAGEMENT AT YOUR FINGERTIPS &nbsp; | &nbsp; 🏆 ELEVATE YOUR GAME TODAY
-              </marquee>
-            </div>
           </main>
         </div>
       )}
 
-      {view === 'about' && (
-        <div className="info-section" style={{maxWidth: '800px', margin: '0 auto', padding: '4rem 2rem', flex: 1}}>
-          <span style={{ color: '#16a34a', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase' }}>Our Mission</span>
-          <h2 style={{color: '#1a2b4c', margin: '0.5rem 0 2rem 0', fontSize: '2.5rem'}}>Why We Built Turf Arena</h2>
-          <p style={{fontSize: '1.1rem', lineHeight: '1.8', color: '#475569', marginBottom: '1.5rem'}}>
-            Turf Arena was born out of a simple frustration: finding and booking a sports venue shouldn't be harder than playing the game itself. We noticed that managers were losing revenue due to double-bookings on WhatsApp, while players were wasting hours just trying to find an open field.
-          </p>
-          <div style={{ background: '#f8fafc', padding: '2rem', borderRadius: '12px', borderLeft: '4px solid #16a34a', margin: '2rem 0', textAlign: 'left' }}>
-            <h3 style={{ color: '#1a2b4c', marginTop: 0 }}>The Power of Outdoor Sports</h3>
-            <p style={{fontSize: '1.1rem', lineHeight: '1.8', color: '#475569', marginBottom: 0}}>
-              We believe getting off the screen and onto the turf is essential. Physical activity reduces stress, builds social connections, and fosters teamwork. Turf Arena acts as the digital bridge to get you back into the physical game faster.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {view === 'contact' && (
-        <div className="info-section" style={{maxWidth: '800px', margin: '0 auto', padding: '4rem 2rem', flex: 1, textAlign: 'center'}}>
-          <h2 style={{color: '#1a2b4c', fontSize: '2.5rem', marginBottom: '1rem'}}>We're Here to Help</h2>
-          <p style={{fontSize: '1.1rem', color: '#64748b', marginBottom: '3rem'}}>Have a question about a booking or want to list your turf? Reach out to us.</p>
-          <div style={{display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap'}}>
-            <div style={{background: 'white', padding: '2rem', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: '250px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
-              <div style={{fontSize: '2.5rem', marginBottom: '1rem'}}>📧</div>
-              <h3 style={{color: '#1a2b4c', margin: '0 0 0.5rem 0'}}>Email Support</h3>
-              <p style={{color: '#16a34a', fontWeight: 'bold', margin: 0}}>support@turfarena.com</p>
-            </div>
-            <div style={{background: 'white', padding: '2rem', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: '250px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
-              <div style={{fontSize: '2.5rem', marginBottom: '1rem'}}>📞</div>
-              <h3 style={{color: '#1a2b4c', margin: '0 0 0.5rem 0'}}>Phone Hotline</h3>
-              <p style={{color: '#16a34a', fontWeight: 'bold', margin: 0}}>+91 98765 43210</p>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Auth Views */}
       {view === 'login' && (
         <div className="auth-container" style={{ flex: 1 }}>
           <div className="auth-card">
@@ -368,6 +330,7 @@ const handleLogin = (e) => {
         </div>
       )}
 
+      {/* Admin Dashboard */}
       {view === 'dashboard' && user?.role === 'admin' && (
         <div className="dashboard" style={{ flex: 1 }}>
           <div className="dashboard-header">
@@ -377,50 +340,25 @@ const handleLogin = (e) => {
           <div className="card" style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8fafc', border: '2px dashed #cbd5e1' }}>
             <h3 style={{ color: '#1a2b4c', marginTop: 0, marginBottom: '1rem' }}>+ Add a New Venue</h3>
             <form onSubmit={handleAddTurf} style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
-              
-              <input 
-                type="text" 
-                placeholder="Turf Name (e.g. Velocity Sports)" 
-                value={newTurf.turfname}
-                onChange={(e) => setNewTurf({...newTurf, turfname: e.target.value})}
-                required 
-                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-              />
-
-              <select 
-                value={newTurf.type} 
-                onChange={(e) => setNewTurf({...newTurf, type: e.target.value})}
-                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-              >
+              <input type="text" placeholder="Turf Name (e.g. Velocity Sports)" value={newTurf.turfname} onChange={(e) => setNewTurf({...newTurf, turfname: e.target.value})} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              <select value={newTurf.type} onChange={(e) => setNewTurf({...newTurf, type: e.target.value})} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
                 <option value="Football">Football</option>
                 <option value="Cricket">Cricket</option>
                 <option value="Tennis">Tennis</option>
                 <option value="Multisport">Multisport</option>
               </select>
-
-              <input 
-                type="text" 
-                placeholder="Location (e.g. Andheri West)" 
-                value={newTurf.location}
-                onChange={(e) => setNewTurf({...newTurf, location: e.target.value})}
-                required 
-                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-              />
-
-              <input 
-                type="number" 
-                placeholder="Price per Hour (₹)" 
-                value={newTurf.priceperhour}
-                onChange={(e) => setNewTurf({...newTurf, priceperhour: e.target.value})}
-                required 
-                style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-              />
-
-              <button type="submit" className="btn-solid" style={{ gridColumn: 'span 2', padding: '0.8rem' }}>
-                Create Turf
-              </button>
+              <input type="text" placeholder="Location (e.g. Andheri West)" value={newTurf.location} onChange={(e) => setNewTurf({...newTurf, location: e.target.value})} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              <input type="number" min="1" placeholder="Price per Hour (₹)" value={newTurf.priceperhour} onChange={(e) => setNewTurf({...newTurf, priceperhour: e.target.value})} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              <input type="email" placeholder="Public Contact Email for Turf" value={newTurf.contact_email} onChange={(e) => setNewTurf({...newTurf, contact_email: e.target.value})} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              <input type="text" placeholder="Google Maps Link (Optional)" value={newTurf.google_maps_link} onChange={(e) => setNewTurf({...newTurf, google_maps_link: e.target.value})} style={{ padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+              <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>Upload Turf Image *</label>
+                <input type="file" accept="image/*" onChange={(e) => setNewTurf({...newTurf, imageFile: e.target.files[0]})} required style={{ padding: '0.8rem', borderRadius: '6px', border: '1px dashed #cbd5e1', background: '#fff' }} />
+              </div>
+              <button type="submit" className="btn-solid" style={{ gridColumn: 'span 2', padding: '0.8rem' }}>Create Turf</button>
             </form>
           </div>
+          
           <h3 style={{color: '#1a2b4c', marginBottom: '1rem'}}>My Venues</h3>
           <div className="grid" style={{marginBottom: '3rem'}}>
             {adminData.turfs.map(t => (
@@ -435,43 +373,10 @@ const handleLogin = (e) => {
               </div>
             ))}
           </div>
-
-          <h3 style={{color: '#1a2b4c', marginBottom: '1rem'}}>Recent Bookings</h3>
-          <div style={{background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden'}}>
-            <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
-              <thead style={{background: '#f8fafc', borderBottom: '2px solid #e2e8f0'}}>
-                <tr>
-                  <th style={{padding: '1rem'}}>ID</th>
-                  <th style={{padding: '1rem'}}>Player</th>
-                  <th style={{padding: '1rem'}}>Venue</th>
-                  <th style={{padding: '1rem'}}>Date</th>
-                  <th style={{padding: '1rem'}}>Status</th>
-                  <th style={{padding: '1rem'}}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {adminData.bookings.map(b => (
-                  <tr key={b.bookingid} style={{borderBottom: '1px solid #e2e8f0'}}>
-                    <td style={{padding: '1rem'}}>#{b.bookingid}</td>
-                    <td style={{padding: '1rem', fontWeight: 'bold'}}>{b.username}</td>
-                    <td style={{padding: '1rem'}}>{b.turfname}</td>
-                    <td style={{padding: '1rem'}}>{b.bookingdate}</td>
-                    <td style={{padding: '1rem'}}>
-                      <span style={{color: b.status === 'Cancelled' ? '#ef4444' : '#16a34a', fontWeight: 'bold'}}>{b.status}</span>
-                    </td>
-                    <td style={{padding: '1rem'}}>
-                      {b.status !== 'Cancelled' && (
-                        <button className="btn-danger" onClick={() => cancelBookingAsAdmin(b.bookingid)}>Cancel</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 
+      {/* Player Dashboard */}
       {view === 'dashboard' && user?.role === 'user' && (
         <div className="dashboard" style={{ flex: 1 }}>
           <div className="dashboard-header">
@@ -480,13 +385,22 @@ const handleLogin = (e) => {
           </div>
           <div className="grid">
             {turfs.map(t => (
-              <div key={t.turfid} className="card" onClick={() => { setSelectedTurf(t); setView('booking'); }}>
-                <span className="badge">{t.type}</span>
-                <h3 style={{color: '#1a2b4c', margin: '0.5rem 0'}}>{t.turfname}</h3>
-                <p style={{color: '#64748b', marginBottom: '1rem'}}>{t.location}</p>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <strong style={{color: '#1a2b4c', fontSize: '1.2rem'}}>₹{t.priceperhour}/hr</strong>
-                  <button className="btn-solid" style={{padding: '0.4rem 1rem'}}>View Slots</button>
+              <div key={t.turfid} className="card" onClick={() => { setSelectedTurf(t); setView('booking'); }} style={{ padding: 0, overflow: 'hidden' }}>
+                {t.image_url ? (
+                  <img src={t.image_url} alt={t.turfname} style={{ width: '100%', height: '200px', objectFit: 'cover', borderBottom: '1px solid #e2e8f0' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '200px', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                    No Image Provided
+                  </div>
+                )}
+                <div style={{ padding: '1.5rem' }}>
+                  <span className="badge">{t.type}</span>
+                  <h3 style={{color: '#1a2b4c', margin: '0.5rem 0'}}>{t.turfname}</h3>
+                  <p style={{color: '#64748b', marginBottom: '1rem'}}>{t.location}</p>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <strong style={{color: '#1a2b4c', fontSize: '1.2rem'}}>₹{t.priceperhour}/hr</strong>
+                    <button className="btn-solid" style={{padding: '0.4rem 1rem'}}>View Slots</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -514,7 +428,7 @@ const handleLogin = (e) => {
                       <td style={{padding: '1rem'}}>{new Date(r.bookingdate).toLocaleDateString()}</td>
                       <td style={{padding: '1rem'}}>
                         {r.status === 'Cancelled' ? (
-                          <span style={{color: '#ef4444', fontSize: '0.9rem'}}>Cancelled by Admin.<br/>Refund initiated in 24 hrs.</span>
+                          <span style={{color: '#ef4444', fontSize: '0.9rem'}}>Cancelled by Admin.</span>
                         ) : (
                           <span style={{color: '#16a34a', fontWeight: 'bold'}}>{r.status}</span>
                         )}
@@ -528,36 +442,60 @@ const handleLogin = (e) => {
         </div>
       )}
 
+      {/* Booking Page */}
       {view === 'booking' && selectedTurf && user?.role === 'user' && (
         <div className="dashboard" style={{maxWidth: '600px', flex: 1}}>
           <button className="btn-outline" style={{marginBottom: '2rem'}} onClick={() => setView('dashboard')}>&larr; Back to Venues</button>
-          <div className="card" style={{padding: '2rem'}}>
-            <h2 style={{color: '#1a2b4c', margin: '0 0 0.5rem 0'}}>Book {selectedTurf.turfname}</h2>
-            <p style={{fontSize: '1.2rem', marginBottom: '2rem', color: '#475569'}}>Rate: <strong style={{color: '#1a2b4c'}}>₹{selectedTurf.priceperhour}</strong>/hr</p>
+          
+          <div className="card" style={{padding: '0', overflow: 'hidden'}}>
+            {selectedTurf.image_url && (
+              <img src={selectedTurf.image_url} alt={selectedTurf.turfname} style={{ width: '100%', height: '250px', objectFit: 'cover' }} />
+            )}
             
-            <h3 style={{marginBottom: '0.5rem', color: '#1a2b4c', fontSize: '1rem'}}>1. Select Date:</h3>
-            <input 
-              type="date" 
-              value={bookingDate} 
-              onChange={(e) => setBookingDate(e.target.value)} 
-              style={{padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '2rem', width: '100%', fontSize: '1rem', fontFamily: 'inherit'}}
-              min={new Date().toISOString().split('T')[0]} 
-            />
+            <div style={{padding: '2rem'}}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div>
+                  <h2 style={{color: '#1a2b4c', margin: '0 0 0.5rem 0'}}>Book {selectedTurf.turfname}</h2>
+                  <p style={{color: '#64748b', margin: '0 0 0.5rem 0'}}>📍 {selectedTurf.location}</p>
+                  {selectedTurf.contact_email && (
+                    <p style={{color: '#64748b', margin: '0 0 0.5rem 0', fontSize: '0.9rem'}}>✉️ {selectedTurf.contact_email}</p>
+                  )}
+                </div>
+                {selectedTurf.google_maps_link && (
+                  <a href={selectedTurf.google_maps_link} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem', textDecoration: 'none' }}>
+                    View on Map 🗺️
+                  </a>
+                )}
+              </div>
 
-            <h3 style={{marginBottom: '1rem', color: '#1a2b4c', fontSize: '1rem'}}>2. Select Slot:</h3>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-              {['6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM'].map(time => {
-                const isBooked = bookedSlots[`${selectedTurf.turfid}-${bookingDate}-${time}`];
-                return (
-                  <button 
-                    key={time} 
-                    className={isBooked ? "btn-disabled" : "btn-outline"}
-                    disabled={isBooked}
-                    onClick={() => initiateBooking(time)}>
-                    {isBooked ? `${time} (Booked)` : time}
-                  </button>
-                );
-              })}
+              <p style={{fontSize: '1.2rem', marginBottom: '2rem', color: '#475569', borderTop: '1px solid #e2e8f0', paddingTop: '1rem'}}>
+                Rate: <strong style={{color: '#1a2b4c'}}>₹{selectedTurf.priceperhour}</strong>/hr
+              </p>
+              
+              <h3 style={{marginBottom: '0.5rem', color: '#1a2b4c', fontSize: '1rem'}}>1. Select Date:</h3>
+              <input 
+                type="date" 
+                value={bookingDate} 
+                onChange={(e) => setBookingDate(e.target.value)} 
+                style={{padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '2rem', width: '100%', fontSize: '1rem', fontFamily: 'inherit'}}
+                min={new Date().toISOString().split('T')[0]} 
+              />
+
+              <h3 style={{marginBottom: '1rem', color: '#1a2b4c', fontSize: '1rem'}}>2. Select Slot:</h3>
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                {['6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM'].map(time => {
+                  const isBooked = bookedSlots[`${selectedTurf.turfid}-${bookingDate}-${time}`];
+                  return (
+                    <button 
+                      key={time} 
+                      className={isBooked ? "btn-disabled" : "btn-outline"}
+                      disabled={isBooked}
+                      onClick={() => initiateBooking(time)}>
+                      {isBooked ? `${time} (Booked)` : time}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -579,31 +517,14 @@ const handleLogin = (e) => {
       {showInvoice && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: '64px', height: '64px', margin: '0 auto 1rem auto', display: 'block'}}>
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
             <h2 style={{color: '#1a2b4c', margin: '0 0 1rem 0'}}>Payment Successful</h2>
             <div className="invoice-box">
-              <div className="invoice-watermark">PAID</div>
-              <div className="invoice-header">
-                <h4>Digital Receipt</h4>
-                <span>#{Math.floor(Math.random() * 90000) + 10000}</span>
-              </div>
-              <div className="invoice-row"><span>Customer:</span> <strong>{user?.name}</strong></div>
               <div className="invoice-row"><span>Venue:</span> <strong>{selectedTurf.turfname}</strong></div>
               <div className="invoice-row"><span>Date:</span> <strong>{bookingDate}</strong></div>
-              <div className="invoice-row"><span>Time Slot:</span> <strong>{pendingSlot}</strong></div>
-              <hr style={{borderTop: '1px solid #e2e8f0', margin: '1rem 0'}}/>
-              <div className="invoice-row"><span>Total Amount Paid:</span> <strong style={{color: '#16a34a', fontSize: '1.2rem'}}>₹{selectedTurf.priceperhour}.00</strong></div>
+              <div className="invoice-row"><span>Total:</span> <strong>₹{selectedTurf.priceperhour}</strong></div>
             </div>
             <button className="btn-solid" style={{width: '100%', marginTop: '1rem'}} onClick={closeInvoice}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '8px'}}>
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Download Receipt & Close
+              Close Receipt
             </button>
           </div>
         </div>
