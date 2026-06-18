@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS 
+from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 import psycopg2.extras
 
@@ -20,12 +21,14 @@ def register():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        hashed_pw = generate_password_hash(data['password'])
+        
         if data['role'] == 'user':
-            cur.execute("INSERT INTO Users (name, email, password, number) VALUES (%s, %s, %s, %s)",
-                        (data['name'], data['email'], data['password'], data['number']))
+            cur.execute("INSERT INTO Users (name, email, number, password) VALUES (%s, %s, %s, %s)", 
+                        (data['name'], data['email'], data['number'], hashed_pw))
         else:
-            cur.execute("INSERT INTO Admin (name, email, password, number) VALUES (%s, %s, %s, %s)",
-                        (data['name'], data['email'], data['password'], data['number']))
+            cur.execute("INSERT INTO Admin (name, email, number, password) VALUES (%s, %s, %s, %s)", 
+                        (data['name'], data['email'], data['number'], hashed_pw))
         conn.commit()
         return jsonify({"status": "success"}), 201
     except Exception as e:
@@ -40,21 +43,23 @@ def login():
     data = request.json
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    if data['role'] == 'user':
-        cur.execute("SELECT userid as id, name, email FROM Users WHERE email = %s AND password = %s", 
-                    (data['email'], data['password']))
-    else:
-        cur.execute("SELECT adminid as id, name, email FROM Admin WHERE email = %s AND password = %s", 
-                    (data['email'], data['password']))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
     
-    if user:
-        user['role'] = data['role']
-        return jsonify(user), 200
-    return jsonify({"error": "Invalid credentials"}), 401
-
+    try:
+        if data['role'] == 'user':
+            cur.execute("SELECT * FROM Users WHERE email = %s", (data['email'],))
+            user = cur.fetchone()
+            if user and check_password_hash(user['password'], data['password']):
+                return jsonify({"id": user['userid'], "name": user['name'], "email": user['email'], "role": "user"}), 200
+        else:
+            cur.execute("SELECT * FROM Admin WHERE email = %s", (data['email'],))
+            admin = cur.fetchone()
+            if admin and check_password_hash(admin['password'], data['password']):
+                return jsonify({"id": admin['adminid'], "name": admin['name'], "email": admin['email'], "role": "admin"}), 200
+                
+        return jsonify({"error": "Invalid credentials"}), 401
+    finally:
+        cur.close()
+        conn.close()
 @app.route('/api/turfs', methods=['GET'])
 def get_turfs():
     conn = get_db_connection()

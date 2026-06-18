@@ -4,8 +4,10 @@ import './App.css';
 
 function App() {
   const [view, setView] = useState('landing');
-  const [user, setUser] = useState(null);
-  
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('turf_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [turfs, setTurfs] = useState([]);
   const [adminData, setAdminData] = useState({ turfs: [], bookings: [] });
   
@@ -60,27 +62,28 @@ function App() {
       }
     }
   }, [view, user]);
-
-  const handleLogin = (e) => {
+const handleLogin = (e) => {
     e.preventDefault();
     fetch('http://127.0.0.1:5000/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, role })
     })
-    .then(res => {
-      if (!res.ok) throw new Error('Backend offline');
+    .then(async res => {
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Invalid credentials');
+      }
       return res.json();
     })
     .then(data => {
-      setUser({ id: data.id, name: data.name, email: data.email, role: data.role });
+      const userData = { id: data.id, name: data.name, email: data.email, role: data.role };
+      setUser(userData);
+      localStorage.setItem('turf_user', JSON.stringify(userData)); // Save session
       setView('dashboard');
     })
-    .catch(() => {
-      const demoName = email.split('@')[0];
-      const formattedName = demoName.charAt(0).toUpperCase() + demoName.slice(1);
-      setUser({ id: role === 'admin' ? 2 : 1, name: formattedName, email, role });
-      setView('dashboard');
+    .catch(err => {
+      alert(`Login Failed: ${err.message}`);
     });
   };
 
@@ -91,14 +94,17 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password, number, role })
     })
-    .then(res => {
-      if (!res.ok) throw new Error('Backend offline');
+    .then(async res => {
+      if (!res.ok) {
+  const err = await res.json();
+  throw new Error(`Backend Error: ${err.error}`);
+}
       alert(`Registration successful! Please sign in.`);
       setView('login');
+      setPassword(''); 
     })
-    .catch(() => {
-      alert(`Demo Mode: Registration captured for ${name}. Please sign in.`);
-      setView('login');
+    .catch(err => {
+      alert(err.message);
     });
   };
 
@@ -186,7 +192,7 @@ function App() {
           <>
             <span style={{fontWeight: 'bold', color: '#1a2b4c'}}>Hi, {user.name}</span>
             <button className="btn-solid" onClick={() => setView('dashboard')}>Dashboard</button>
-            <button className="btn-outline" onClick={() => {setUser(null); setView('landing'); setEmail(''); setPassword('');}}>Logout</button>
+            <button className="btn-outline" onClick={() => {setUser(null); localStorage.removeItem('turf_user'); setView('landing'); setEmail(''); setPassword('');}}>Logout</button>
           </>
         ) : (
           <>
