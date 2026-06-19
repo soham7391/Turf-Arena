@@ -40,7 +40,9 @@ function App() {
   const [password, setPassword] = useState('');
   const [number, setNumber] = useState('');
   const [role, setRole] = useState('user');
-
+const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null });
+  const [priceModal, setPriceModal] = useState({ isOpen: false, turfId: null, currentPrice: '' });
+  const [newPriceInput, setNewPriceInput] = useState('');
   const handleAddTurf = (e) => {
     e.preventDefault();
     
@@ -199,31 +201,46 @@ function App() {
     setView('dashboard');
   };
 
-  const cancelBookingAsAdmin = (bookingId) => {
-    if(window.confirm("Are you sure you want to cancel this booking? The user will be refunded.")) {
-      fetch(`http://127.0.0.1:5000/api/admin/bookings/${bookingId}`, { method: 'PUT' })
-        .then(() => {
-          setAdminData(prev => ({
-            ...prev,
-            bookings: prev.bookings.map(b => b.bookingid === bookingId ? {...b, status: 'Cancelled'} : b)
-          }));
-        });
-    }
+// --- CUSTOM CANCEL MODAL LOGIC ---
+  const initiateCancelAsAdmin = (bookingId) => {
+    setCancelModal({ isOpen: true, bookingId });
   };
 
-  const updatePriceAsAdmin = (turfId, currentPrice) => {
-    const newPrice = window.prompt(`Enter new hourly rate (Current: ₹${currentPrice}):`, currentPrice);
-    if (newPrice && !isNaN(newPrice) && Number(newPrice) !== Number(currentPrice)) {
+  const confirmCancelBooking = () => {
+    const bookingId = cancelModal.bookingId;
+    fetch(`http://127.0.0.1:5000/api/admin/bookings/${bookingId}`, { method: 'PUT' })
+      .then(() => {
+        setAdminData(prev => ({
+          ...prev,
+          bookings: prev.bookings.map(b => b.bookingid === bookingId ? {...b, status: 'Cancelled'} : b)
+        }));
+        setCancelModal({ isOpen: false, bookingId: null });
+      });
+  };
+
+  const initiatePriceUpdate = (turfId, currentPrice) => {
+    setNewPriceInput(currentPrice); 
+    setPriceModal({ isOpen: true, turfId, currentPrice });
+  };
+
+  const confirmPriceUpdate = (e) => {
+    e.preventDefault(); 
+    const { turfId, currentPrice } = priceModal;
+    
+    if (newPriceInput && !isNaN(newPriceInput) && Number(newPriceInput) !== Number(currentPrice)) {
       fetch(`http://127.0.0.1:5000/api/admin/turf/${turfId}/price`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price: Number(newPrice) })
+        body: JSON.stringify({ price: Number(newPriceInput) })
       }).then(() => {
         setAdminData(prev => ({
           ...prev,
-          turfs: prev.turfs.map(t => t.turfid === turfId ? { ...t, priceperhour: Number(newPrice) } : t)
+          turfs: prev.turfs.map(t => t.turfid === turfId ? { ...t, priceperhour: Number(newPriceInput) } : t)
         }));
+        setPriceModal({ isOpen: false, turfId: null, currentPrice: '' });
       });
+    } else {
+      setPriceModal({ isOpen: false, turfId: null, currentPrice: '' });
     }
   };
 
@@ -330,7 +347,6 @@ function App() {
         </div>
       )}
 
-      {/* Admin Dashboard */}
       {view === 'dashboard' && user?.role === 'admin' && (
         <div className="dashboard" style={{ flex: 1 }}>
           <div className="dashboard-header">
@@ -368,15 +384,47 @@ function App() {
                 <p style={{color: '#64748b', marginBottom: '1rem'}}>{t.location}</p>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                   <strong style={{color: '#1a2b4c', fontSize: '1.2rem'}}>₹{t.priceperhour}/hr</strong>
-                  <button className="btn-outline" style={{padding: '0.3rem 0.6rem', fontSize: '0.85rem'}} onClick={() => updatePriceAsAdmin(t.turfid, t.priceperhour)}>Edit Price</button>
+                <button className="btn-outline" style={{padding: '0.3rem 0.6rem', fontSize: '0.85rem'}} onClick={() => initiatePriceUpdate(t.turfid, t.priceperhour)}>Edit Price</button>
                 </div>
               </div>
             ))}
+          </div> 
+          <h3 style={{color: '#1a2b4c', marginBottom: '1rem'}}>Recent Bookings</h3>
+          <div style={{background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '2rem'}}>
+            <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
+              <thead style={{background: '#f8fafc', borderBottom: '2px solid #e2e8f0'}}>
+                <tr>
+                  <th style={{padding: '1rem'}}>ID</th>
+                  <th style={{padding: '1rem'}}>Player</th>
+                  <th style={{padding: '1rem'}}>Venue</th>
+                  <th style={{padding: '1rem'}}>Date</th>
+                  <th style={{padding: '1rem'}}>Status</th>
+                  <th style={{padding: '1rem'}}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminData.bookings.map(b => (
+                  <tr key={b.bookingid} style={{borderBottom: '1px solid #e2e8f0'}}>
+                    <td style={{padding: '1rem'}}>#{b.bookingid}</td>
+                    <td style={{padding: '1rem', fontWeight: 'bold'}}>{b.username}</td>
+                    <td style={{padding: '1rem'}}>{b.turfname}</td>
+                    <td style={{padding: '1rem'}}>{b.bookingdate}</td>
+                    <td style={{padding: '1rem'}}>
+                      <span style={{color: b.status === 'Cancelled' ? '#ef4444' : '#16a34a', fontWeight: 'bold'}}>{b.status}</span>
+                    </td>
+                    <td style={{padding: '1rem'}}>
+                      {b.status !== 'Cancelled' && (
+                        <button className="btn-danger" onClick={() => initiateCancelAsAdmin(b.bookingid)}>Cancel</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* Player Dashboard */}
       {view === 'dashboard' && user?.role === 'user' && (
         <div className="dashboard" style={{ flex: 1 }}>
           <div className="dashboard-header">
@@ -442,7 +490,6 @@ function App() {
         </div>
       )}
 
-      {/* Booking Page */}
       {view === 'booking' && selectedTurf && user?.role === 'user' && (
         <div className="dashboard" style={{maxWidth: '600px', flex: 1}}>
           <button className="btn-outline" style={{marginBottom: '2rem'}} onClick={() => setView('dashboard')}>&larr; Back to Venues</button>
@@ -501,6 +548,43 @@ function App() {
         </div>
       )}
 
+      {priceModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 style={{color: '#1a2b4c', marginBottom: '1rem', marginTop: 0}}>Update Turf Price</h2>
+            <p style={{color: '#475569', marginBottom: '1.5rem'}}>Enter the new hourly rate for this venue.</p>
+            <form onSubmit={confirmPriceUpdate}>
+              <input 
+                type="number" 
+                min="1"
+                value={newPriceInput} 
+                onChange={(e) => setNewPriceInput(e.target.value)} 
+                style={{padding: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', width: '100%', marginBottom: '1.5rem', fontSize: '1.1rem'}}
+                autoFocus
+              />
+              <div style={{display: 'flex', gap: '1rem'}}>
+                <button type="button" className="btn-outline" style={{flex: 1}} onClick={() => setPriceModal({isOpen: false, turfId: null, currentPrice: ''})}>Cancel</button>
+                <button type="submit" className="btn-solid" style={{flex: 1}}>Save Price</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {cancelModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{fontSize: '3rem', marginBottom: '1rem', textAlign: 'center'}}>⚠️</div>
+            <h2 style={{color: '#1a2b4c', marginBottom: '1rem', marginTop: 0, textAlign: 'center'}}>Cancel Booking?</h2>
+            <p style={{color: '#475569', fontSize: '1.1rem', lineHeight: '1.6', textAlign: 'center'}}>Are you sure you want to cancel this booking? The user will be notified and refunded automatically.</p>
+            <div style={{display: 'flex', gap: '1rem', marginTop: '2rem'}}>
+              <button className="btn-outline" style={{flex: 1}} onClick={() => setCancelModal({isOpen: false, bookingId: null})}>Go Back</button>
+              <button className="btn-danger" style={{flex: 1, padding: '0.8rem', borderRadius: '6px', border: 'none', background: '#ef4444', color: 'white', fontWeight: 'bold', cursor: 'pointer'}} onClick={confirmCancelBooking}>Confirm Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showConfirm && (
         <div className="modal-overlay">
           <div className="modal-content">
