@@ -193,6 +193,21 @@ def cancel_booking(booking_id):
         return jsonify({"error": str(e)}), 400
     finally:
         cur.close()
+        conn.close() 
+@app.route('/api/admin/turf/<int:turf_id>', methods=['DELETE'])
+def delete_turf(turf_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM Bookings WHERE turfid = %s", (turf_id,))
+        cur.execute("DELETE FROM Turf WHERE turfid = %s", (turf_id,))
+        conn.commit()
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 400
+    finally:
+        cur.close()
         conn.close()
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

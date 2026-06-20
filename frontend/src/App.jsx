@@ -42,7 +42,36 @@ function App() {
   const [role, setRole] = useState('user');
 const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null });
   const [priceModal, setPriceModal] = useState({ isOpen: false, turfId: null, currentPrice: '' });
-  const [newPriceInput, setNewPriceInput] = useState('');
+  const [newPriceInput, setNewPriceInput] = useState(''); 
+  const [showPassword, setShowPassword] = useState(false);
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', isError: false });
+  const [deleteTurfModal, setDeleteTurfModal] = useState({ isOpen: false, turfId: null, turfName: '' });
+
+  const triggerAlert = (title, message, isError = false) => {
+    setAlertModal({ isOpen: true, title, message, isError });
+  };
+
+  const initiateDeleteTurf = (turfId, turfName) => {
+    setDeleteTurfModal({ isOpen: true, turfId, turfName });
+  };
+
+  const confirmDeleteTurf = () => {
+    const turfId = deleteTurfModal.turfId;
+    fetch(`http://127.0.0.1:5000/api/admin/turf/${turfId}`, { method: 'DELETE' })
+      .then(async res => {
+        if (!res.ok) throw new Error('Failed to delete venue');
+        setAdminData(prev => ({
+          ...prev,
+          turfs: prev.turfs.filter(t => t.turfid !== turfId)
+        }));
+        setDeleteTurfModal({ isOpen: false, turfId: null, turfName: '' });
+        triggerAlert('Deleted', 'The venue has been permanently removed.');
+      })
+      .catch(err => {
+        triggerAlert('Error', err.message, true);
+        setDeleteTurfModal({ isOpen: false, turfId: null, turfName: '' });
+      });
+  };
   const handleAddTurf = (e) => {
     e.preventDefault();
     
@@ -70,7 +99,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
       return res.json();
     })
     .then(data => {
-      alert('Turf successfully added to your dashboard!');
+      triggerAlert('Success!', 'Venue successfully added to your dashboard.');
       setAdminData(prev => ({
         ...prev,
         turfs: [...prev.turfs, {
@@ -135,7 +164,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
       setView('dashboard');
     })
     .catch(err => {
-      alert(`Login Failed: ${err.message}`);
+      triggerAlert('Login Failed!', err.message, true);
     });
   };
 
@@ -151,7 +180,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
         const err = await res.json();
         throw new Error(`Backend Error: ${err.error}`);
       }
-      alert(`Registration successful! Please sign in.`);
+      triggerAlert(`Registration successful! Please sign in.`);
       setView('login');
       setPassword(''); 
     })
@@ -305,11 +334,50 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
               <div style={{ flex: 1, minWidth: '300px', display: 'flex', justifyContent: 'center' }}>
                 <img src="/hero.jpg" alt="Turf Arena" style={{ width: '100%', maxWidth: '500px', height: 'auto', objectFit: 'cover', borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', border: '4px solid #1e293b', backgroundColor: 'white' }} />
               </div>
+            </div> 
+            <div style={{ width: '100%', marginTop: '4rem', padding: '1.2rem 0', backgroundColor: '#000000', borderTop: '2px solid #222', borderBottom: '2px solid #222' }}>
+              <marquee scrollamount="10" style={{ color: '#ffffff', fontSize: '1.2rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px' }}>
+                ⚽ SEAMLESS BOOKINGS FOR EVERY SPORT &nbsp; | &nbsp; 🏏 EXPERIENCE PREMIUM PLAYING SURFACES &nbsp; | &nbsp; 🎾 NO MORE DOUBLE BOOKINGS, JUST PURE PLAY &nbsp; | &nbsp; ⚡ SMART VENUE MANAGEMENT AT YOUR FINGERTIPS &nbsp; | &nbsp; 🏆 ELEVATE YOUR GAME TODAY
+              </marquee>
             </div>
           </main>
         </div>
       )}
 
+      {view === 'about' && (
+        <div className="info-section" style={{maxWidth: '800px', margin: '0 auto', padding: '4rem 2rem', flex: 1}}>
+          <span style={{ color: '#16a34a', fontWeight: 'bold', letterSpacing: '1px', textTransform: 'uppercase' }}>Our Mission</span>
+          <h2 style={{color: '#1a2b4c', margin: '0.5rem 0 2rem 0', fontSize: '2.5rem'}}>Why We Built Turf Arena</h2>
+          <p style={{fontSize: '1.1rem', lineHeight: '1.8', color: '#475569', marginBottom: '1.5rem'}}>
+            Turf Arena was born out of a simple frustration: finding and booking a sports venue shouldn't be harder than playing the game itself. We noticed that managers were losing revenue due to double-bookings on WhatsApp, while players were wasting hours just trying to find an open field.
+          </p>
+          <div style={{ background: '#f8fafc', padding: '2rem', borderRadius: '12px', borderLeft: '4px solid #16a34a', margin: '2rem 0', textAlign: 'left' }}>
+            <h3 style={{ color: '#1a2b4c', marginTop: 0 }}>The Power of Outdoor Sports</h3>
+            <p style={{fontSize: '1.1rem', lineHeight: '1.8', color: '#475569', marginBottom: 0}}>
+              We believe getting off the screen and onto the turf is essential. Physical activity reduces stress, builds social connections, and fosters teamwork. Turf Arena acts as the digital bridge to get you back into the physical game faster.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {view === 'contact' && (
+        <div className="info-section" style={{maxWidth: '800px', margin: '0 auto', padding: '4rem 2rem', flex: 1, textAlign: 'center'}}>
+          <h2 style={{color: '#1a2b4c', fontSize: '2.5rem', marginBottom: '1rem'}}>We're Here to Help</h2>
+          <p style={{fontSize: '1.1rem', color: '#64748b', marginBottom: '3rem'}}>Have a question about a booking or want to list your turf? Reach out to us.</p>
+          <div style={{display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap'}}>
+            <div style={{background: 'white', padding: '2rem', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: '250px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
+              <div style={{fontSize: '2.5rem', marginBottom: '1rem'}}>📧</div>
+              <h3 style={{color: '#1a2b4c', margin: '0 0 0.5rem 0'}}>Email Support</h3>
+              <p style={{color: '#16a34a', fontWeight: 'bold', margin: 0}}>support@turfarena.com</p>
+            </div>
+            <div style={{background: 'white', padding: '2rem', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: '250px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
+              <div style={{fontSize: '2.5rem', marginBottom: '1rem'}}>📞</div>
+              <h3 style={{color: '#1a2b4c', margin: '0 0 0.5rem 0'}}>Phone Hotline</h3>
+              <p style={{color: '#16a34a', fontWeight: 'bold', margin: 0}}>+91 98765 43210</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Auth Views */}
       {view === 'login' && (
         <div className="auth-container" style={{ flex: 1 }}>
@@ -317,7 +385,13 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
             <h2>Welcome Back</h2>
             <form onSubmit={handleLogin}>
               <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-              <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+              <div style={{position: 'relative', width: '100%', display: 'flex', alignItems: 'center'}}>
+                <input type={showPassword ? "text" : "password"} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{width: '100%', paddingRight: '40px', marginBottom: 0}} />
+                <span onClick={() => setShowPassword(!showPassword)} style={{position: 'absolute', right: '10px', cursor: 'pointer', fontSize: '1.2rem', userSelect: 'none'}}>
+                  {showPassword ? '🙈' : '👁️'}
+                </span>
+              </div>
+              <div style={{height: '1rem'}}></div>
               <select value={role} onChange={e => setRole(e.target.value)}>
                 <option value="user">I am a Player</option>
                 <option value="admin">I am a Turf Owner (Admin)</option>
@@ -336,7 +410,13 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
               <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required />
               <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required />
               <input type="tel" placeholder="Phone Number" value={number} onChange={e => setNumber(e.target.value)} required />
-              <input type="password" placeholder="Create Password" value={password} onChange={e => setPassword(e.target.value)} required />
+              <div style={{position: 'relative', width: '100%', display: 'flex', alignItems: 'center'}}>
+                <input type={showPassword ? "text" : "password"} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{width: '100%', paddingRight: '40px', marginBottom: 0}} />
+                <span onClick={() => setShowPassword(!showPassword)} style={{position: 'absolute', right: '10px', cursor: 'pointer', fontSize: '1.2rem', userSelect: 'none'}}>
+                  {showPassword ? '🙈' : '👁️'}
+                </span>
+              </div>
+              <div style={{height: '1rem'}}></div>
               <select value={role} onChange={e => setRole(e.target.value)}>
                 <option value="user">Register as Player</option>
                 <option value="admin">Register as Turf Owner</option>
@@ -377,14 +457,17 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
           
           <h3 style={{color: '#1a2b4c', marginBottom: '1rem'}}>My Venues</h3>
           <div className="grid" style={{marginBottom: '3rem'}}>
-            {adminData.turfs.map(t => (
+            {adminData.turfs.filter(t => t.image_url && t.image_url !== '').map(t => (
               <div key={t.turfid} className="card" style={{cursor: 'default'}}>
                 <span className="badge">{t.type}</span>
                 <h3 style={{color: '#1a2b4c', margin: '0.5rem 0'}}>{t.turfname}</h3>
                 <p style={{color: '#64748b', marginBottom: '1rem'}}>{t.location}</p>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                   <strong style={{color: '#1a2b4c', fontSize: '1.2rem'}}>₹{t.priceperhour}/hr</strong>
-                <button className="btn-outline" style={{padding: '0.3rem 0.6rem', fontSize: '0.85rem'}} onClick={() => initiatePriceUpdate(t.turfid, t.priceperhour)}>Edit Price</button>
+                <div style={{display: 'flex', gap: '0.5rem'}}>
+                    <button className="btn-outline" style={{padding: '0.3rem 0.6rem', fontSize: '0.85rem'}} onClick={() => initiatePriceUpdate(t.turfid, t.priceperhour)}>Edit</button>
+                    <button className="btn-danger" style={{padding: '0.3rem 0.6rem', fontSize: '0.85rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer'}} onClick={() => initiateDeleteTurf(t.turfid, t.turfname)}>Delete</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -432,7 +515,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
             <span style={{color: '#64748b'}}>Select a turf to view slots</span>
           </div>
           <div className="grid">
-            {turfs.map(t => (
+            {turfs.filter(t => t.image_url && t.image_url !== '').map(t => (
               <div key={t.turfid} className="card" onClick={() => { setSelectedTurf(t); setView('booking'); }} style={{ padding: 0, overflow: 'hidden' }}>
                 {t.image_url ? (
                   <img src={t.image_url} alt={t.turfname} style={{ width: '100%', height: '200px', objectFit: 'cover', borderBottom: '1px solid #e2e8f0' }} />
@@ -584,6 +667,31 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
             </div>
           </div>
         </div>
+      )} 
+
+      {alertModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{textAlign: 'center'}}>
+            <div style={{fontSize: '3rem', marginBottom: '1rem'}}>{alertModal.isError ? '⚠️' : '✅'}</div>
+            <h2 style={{color: '#1a2b4c', marginBottom: '1rem', marginTop: 0}}>{alertModal.title}</h2>
+            <p style={{color: '#475569', fontSize: '1.1rem', marginBottom: '2rem'}}>{alertModal.message}</p>
+            <button className="btn-solid" style={{width: '100%'}} onClick={() => setAlertModal({isOpen: false, title: '', message: '', isError: false})}>Okay</button>
+          </div>
+        </div>
+      )}
+
+      {deleteTurfModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{textAlign: 'center'}}>
+            <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🗑️</div>
+            <h2 style={{color: '#1a2b4c', marginBottom: '1rem', marginTop: 0}}>Delete Venue?</h2>
+            <p style={{color: '#475569', fontSize: '1.1rem', lineHeight: '1.6'}}>Are you sure you want to permanently delete <strong>{deleteTurfModal.turfName}</strong>? All associated bookings will also be removed.</p>
+            <div style={{display: 'flex', gap: '1rem', marginTop: '2rem'}}>
+              <button className="btn-outline" style={{flex: 1}} onClick={() => setDeleteTurfModal({isOpen: false, turfId: null, turfName: ''})}>Cancel</button>
+              <button className="btn-danger" style={{flex: 1, padding: '0.8rem', borderRadius: '6px', border: 'none', background: '#ef4444', color: 'white', fontWeight: 'bold', cursor: 'pointer'}} onClick={confirmDeleteTurf}>Delete Venue</button>
+            </div>
+          </div>
+        </div>
       )}
       {showConfirm && (
         <div className="modal-overlay">
@@ -615,7 +723,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
       )}
 
       <footer style={{ textAlign: 'center', padding: '1.5rem', marginTop: 'auto', borderTop: '1px solid #e2e8f0', color: '#64748b', fontWeight: '600', backgroundColor: 'white' }}>
-        Made by Soham & Ritik!
+        Connecting players to the best turf grounds. Book, play, and dominate!
       </footer>
     </div>
   );

@@ -1,11 +1,15 @@
-import psycopg2
+import psycopg2 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 def test_connection():
     connection = None
     try:
         
         connection = psycopg2.connect(
             user="postgres",
-            password="SODU1602",
+            password=os.getenv("DB_PASSWORD"),
             host="127.0.0.1",
             port="5432",
             database="turf_management"
