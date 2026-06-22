@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS 
-import os
+import os 
+from dotenv import load_dotenv
+load_dotenv()
 from werkzeug.security import generate_password_hash, check_password_hash 
 from werkzeug.utils import secure_filename
 import psycopg2
@@ -12,7 +14,7 @@ CORS(app)
 DB_HOST = "localhost"
 DB_NAME = "turf_management"
 DB_USER = "postgres"
-DB_PASS = "SODU1602"
+DB_PASS = os.getenv("DB_PASSWORD")
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def get_db_connection():
