@@ -49,7 +49,7 @@ def login():
     
     try:
         if data['role'] == 'user':
-            cur.execute("SELECT * FROM Users WHERE email = %s", (data['email'],))
+            cur.execute("SELECT * FROM users WHERE email = %s", (data['email'],))
             user = cur.fetchone()
             if user and check_password_hash(user['password'], data['password']):
                 return jsonify({"id": user['userid'], "name": user['name'], "email": user['email'], "role": "user"}), 200
@@ -66,10 +66,9 @@ def login():
 @app.route('/api/turfs', methods=['GET'])
 def get_all_turfs():
     conn = get_db_connection()
-    # RealDictCursor ensures the data is returned as JSON objects with column names
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Fetch all turfs, ordering them so the newest ones appear at the top!
+
         cur.execute("SELECT * FROM Turf ORDER BY turfid DESC")
         turfs = cur.fetchall()
         return jsonify(turfs), 200
@@ -80,7 +79,7 @@ def get_all_turfs():
         conn.close()
 @app.route('/api/turfs', methods=['POST'])
 def add_turf():
-    data = request.form # Changed to form data for file uploads
+    data = request.form 
     conn = get_db_connection()
     cur = conn.cursor()
     try:
@@ -111,36 +110,57 @@ def add_turf():
         conn.close()
 
 @app.route('/api/admin/dashboard/<int:admin_id>', methods=['GET'])
-def admin_dashboard(admin_id):
+def get_admin_dashboard(admin_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    
-    cur.execute("SELECT * FROM Turf WHERE adminid = %s", (admin_id,))
-    turfs = cur.fetchall()
-    
-    cur.execute("""
-        SELECT b.bookingid, u.name as username, t.turfname, b.bookingdate, b.duration, b.totalamount, b.status
-        FROM booking b
-        JOIN Users u ON b.userid = u.userid
-        JOIN Turf t ON b.turfid = t.turfid
-        WHERE t.adminid = %s
-    """, (admin_id,))
-    bookings = cur.fetchall()
-    
-    cur.close()
-    conn.close()
-    return jsonify({"turfs": turfs, "bookings": bookings}), 200
+    try:
+
+        cur.execute("SELECT * FROM Turf WHERE adminid = %s ORDER BY turfid DESC", (admin_id,))
+        turfs = cur.fetchall()
+
+        cur.execute("""
+            SELECT booking.bookingid, users.name AS username, Turf.turfname, booking.bookingdate, booking.timeslot, booking.status
+            FROM booking
+            JOIN Turf ON booking.turfid = Turf.turfid
+            JOIN Users ON booking.userid = users.userid
+            WHERE Turf.adminid = %s
+            ORDER BY booking.bookingid DESC
+        """, (admin_id,))
+        bookings = cur.fetchall()
+
+        return jsonify({"turfs": turfs, "bookings": bookings}), 200
+    except Exception as e: 
+        print(f"🚨 ADMIN CRASH: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
 
 @app.route('/api/book', methods=['POST'])
-def book():
+def book_turf():
     data = request.json
+    userid = data['userid']
+    turfid = data['turfid']
+    bookingdate = data['bookingdate']
+    timeslot = data.get('timeslot') 
+    totalamount = data['totalamount']
+    status = data.get('status', 'Confirmed')
+
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("""
-            INSERT INTO booking (userid, turfid, bookingdate, duration, totalamount, status)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (data['userid'], data['turfid'], data['bookingdate'], data['duration'], data['totalamount'], data['status']))
+
+        cur.execute(
+            "SELECT * FROM booking WHERE turfid = %s AND bookingdate = %s AND timeslot = %s AND status = 'Confirmed'", 
+            (turfid, bookingdate, timeslot)
+        )
+        if cur.fetchone():
+            return jsonify({"error": "This slot is already booked!"}), 400
+
+        cur.execute(
+            "INSERT INTO booking (userid, turfid, bookingdate, timeslot, totalamount, status) VALUES (%s, %s, %s, %s, %s, %s)",
+            (userid, turfid, bookingdate, timeslot, totalamount, status)
+        )
         conn.commit()
         return jsonify({"status": "success"}), 201
     except Exception as e:
@@ -153,17 +173,23 @@ def book():
 def get_user_bookings(user_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT b.bookingid, t.turfname, b.bookingdate, b.totalamount, b.status
-        FROM booking b
-        JOIN Turf t ON b.turfid = t.turfid
-        WHERE b.userid = %s
-        ORDER BY b.bookingid DESC
-    """, (user_id,))
-    bookings = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify(bookings), 200
+    try:
+
+        cur.execute("""
+            SELECT booking.bookingid, Turf.turfname, booking.bookingdate, booking.timeslot, booking.status
+            FROM booking
+            JOIN Turf ON booking.turfid = Turf.turfid
+            WHERE booking.userid = %s
+            ORDER BY booking.bookingid DESC
+        """, (user_id,))
+        bookings = cur.fetchall()
+        return jsonify(bookings), 200
+    except Exception as e: 
+        print(f"🚨 DATABASE CRASH: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
 @app.route('/api/admin/turf/<int:turf_id>/price', methods=['PUT'])
 def update_turf_price(turf_id):
     data = request.json
@@ -184,7 +210,7 @@ def cancel_booking(booking_id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # We UPDATE instead of DELETE so the user still gets a receipt with a refund message!
+
         cur.execute("UPDATE booking SET status = 'Cancelled' WHERE bookingid = %s", (booking_id,))
         conn.commit()
         return jsonify({"status": "success"}), 200

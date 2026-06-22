@@ -118,31 +118,36 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
     });
   };
 
-  useEffect(() => {
+useEffect(() => {
     if (view === 'dashboard' && user) {
       if (user.role === 'user') {
         fetch('http://127.0.0.1:5000/api/turfs')
           .then(res => res.json())
-          .then(data => setTurfs(data))
-          .catch(() => setTurfs(fallbackTurfs));
+          .then(data => {
+            if (data.error) console.error("Turf Error:", data.error);
+            else setTurfs(data);
+          })
+          .catch(() => console.log("Waiting for database connection..."));
           
         fetch(`http://127.0.0.1:5000/api/user/bookings/${user.id}`)
           .then(res => res.json())
-          .then(data => setUserReceipts(data))
-          .catch(() => console.log("Demo: no receipts found"));
+          .then(data => {
+            if (data.error) console.error("Booking Error:", data.error);
+            else setUserReceipts(data);
+          })
+          .catch(() => console.log("No receipts found"));
           
       } else if (user.role === 'admin') {
         fetch(`http://127.0.0.1:5000/api/admin/dashboard/${user.id}`)
           .then(res => res.json())
-          .then(data => setAdminData(data))
-          .catch(() => {
-            const ownedTurfs = fallbackTurfs.filter(t => t.adminid === user.id);
-            setAdminData({ turfs: ownedTurfs, bookings: [] });
-          });
+          .then(data => {
+            if (data.error) console.error("Admin Error:", data.error);
+            else setAdminData(data);
+          })
+          .catch(() => console.log("Waiting for database connection..."));
       }
     }
   }, [view, user]);
-
   const handleLogin = (e) => {
     e.preventDefault();
     fetch('http://127.0.0.1:5000/api/login', {
@@ -198,7 +203,8 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
     const bookingData = {
       userid: user.id,
       turfid: selectedTurf.turfid,
-      bookingdate: bookingDate,
+      bookingdate: bookingDate, 
+      timeslot: pendingSlot,
       duration: 1,
       totalamount: selectedTurf.priceperhour,
       status: 'Confirmed'
@@ -230,7 +236,6 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
     setView('dashboard');
   };
 
-// --- CUSTOM CANCEL MODAL LOGIC ---
   const initiateCancelAsAdmin = (bookingId) => {
     setCancelModal({ isOpen: true, bookingId });
   };
@@ -337,7 +342,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
             </div> 
             <div style={{ width: '100%', marginTop: '4rem', padding: '1.2rem 0', backgroundColor: '#000000', borderTop: '2px solid #222', borderBottom: '2px solid #222' }}>
               <marquee scrollamount="10" style={{ color: '#ffffff', fontSize: '1.2rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                ⚽ SEAMLESS BOOKINGS FOR EVERY SPORT &nbsp; | &nbsp; 🏏 EXPERIENCE PREMIUM PLAYING SURFACES &nbsp; | &nbsp; 🎾 NO MORE DOUBLE BOOKINGS, JUST PURE PLAY &nbsp; | &nbsp; ⚡ SMART VENUE MANAGEMENT AT YOUR FINGERTIPS &nbsp; | &nbsp; 🏆 ELEVATE YOUR GAME TODAY
+                ⚽ SEAMLESS BOOKINGS FOR EVERY SPORT &nbsp; | &nbsp; 🏏 EXPERIENCE PREMIUM PLAYING SURFACES &nbsp; | &nbsp; 🎾 NO MORE DOUBLE BOOKINGS, JUST PURE PLAY &nbsp; | &nbsp; ⚡ SMART VENUE MANAGEMENT AT YOUR FINGERTIPS &nbsp; | &nbsp; 🏆 ELEVATE YOUR GAME TODAY!
               </marquee>
             </div>
           </main>
@@ -378,7 +383,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
           </div>
         </div>
       )}
-      {/* Auth Views */}
+    
       {view === 'login' && (
         <div className="auth-container" style={{ flex: 1 }}>
           <div className="auth-card">
@@ -491,7 +496,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
                     <td style={{padding: '1rem'}}>#{b.bookingid}</td>
                     <td style={{padding: '1rem', fontWeight: 'bold'}}>{b.username}</td>
                     <td style={{padding: '1rem'}}>{b.turfname}</td>
-                    <td style={{padding: '1rem'}}>{b.bookingdate}</td>
+                    <td style={{padding: '1rem'}}>{b.bookingdate.split(' 00:00:00')[0]} at {b.timeslot}</td>
                     <td style={{padding: '1rem'}}>
                       <span style={{color: b.status === 'Cancelled' ? '#ef4444' : '#16a34a', fontWeight: 'bold'}}>{b.status}</span>
                     </td>
@@ -556,7 +561,7 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
                     <tr key={r.bookingid} style={{borderBottom: '1px solid #e2e8f0'}}>
                       <td style={{padding: '1rem'}}>#{r.bookingid}</td>
                       <td style={{padding: '1rem', fontWeight: 'bold'}}>{r.turfname}</td>
-                      <td style={{padding: '1rem'}}>{new Date(r.bookingdate).toLocaleDateString()}</td>
+                      <td style={{padding: '1rem'}}>{new Date(r.bookingdate).toLocaleDateString()} at {r.timeslot}</td>
                       <td style={{padding: '1rem'}}>
                         {r.status === 'Cancelled' ? (
                           <span style={{color: '#ef4444', fontSize: '0.9rem'}}>Cancelled by Admin.</span>
@@ -654,7 +659,6 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
         </div>
       )}
 
-
       {cancelModal.isOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -728,5 +732,4 @@ const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null 
     </div>
   );
 }
-
 export default App;
